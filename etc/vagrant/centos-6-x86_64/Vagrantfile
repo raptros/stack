@@ -14,12 +14,16 @@ Vagrant.configure(2) do |config|
     yum -y check-update || true
     yum -y upgrade ca-certificates
     yum -y install epel-release
-    yum -y install perl make automake gcc gmp-devel zlib-devel rpm-build tar which git xz python-boto deltarpm python-deltarpm rpm-build rpm-sign ncurses-devel
-    if ! which stack; then
-      curl -sSL https://download.fpcomplete.com/centos/6/fpco.repo >/etc/yum.repos.d/fpco.repo
-      yum -y check-update || true
-    fi
-    yum -y install stack
+    yum -y install perl make automake gcc gmp-devel zlib-devel rpm-build tar which git xz python-boto deltarpm python-deltarpm rpm-build rpm-sign ncurses-devel curl
+    #@@@ if ! which stack; then
+    #@@@   curl -sSL https://download.fpcomplete.com/centos/6/fpco.repo >/etc/yum.repos.d/fpco.repo
+    #@@@   yum -y check-update || true
+    #@@@ fi
+    #@@@ yum -y install stack
+    rm -f "$(which stack)" #@@@
+    curl -sSL https://www.stackage.org/stack/linux-x86_64-static \
+      | tar xzvf - --wildcards --strip-components=1 -C /usr/local/bin '*/stack'
+    chmod a+x /usr/local/bin/stack
     if ! which fpm; then
         yum -y install ruby-devel
         yum -y install rubygems

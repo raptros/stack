@@ -23,6 +23,10 @@
 * @@@ maybe announce fully phasing out ubuntu/centos packages?
 * @@@ put back on stackage
 * @@@ remove `-nopie` variants from stack-setup-2.yaml (stack-1.7 will no longer use them, so wait a few more major releases)
+* @@@ look into https://github.com/tfausak/github-release
+* @@@ upgrade to freebsd 12 for build?
+* @@@ for stack-1.7 built w/ ghc 8.2.2, do an aarch64 bindist
+* @@@ switch to debian 8 for building linux binaries, to match GHC
 
 ## Version scheme
 
@@ -52,7 +56,7 @@
     * Run `stack --stack-yaml=stack-nightly.yaml test --pedantic`
 * Check compatibility with latest Hackage:
     [@@@ export PATH=$(stack --stack-yaml=stack-nightly.yaml path --compiler-bin):$PATH
-    [@@@ check for any bounds preventing use of latest packages (note that deprecated packes will show up in this list; ignore those): cabal sandbox delete; stack build --dry-run && cabal sandbox init && cabal update && cabal install --enable-test --enable-bench --dry-run | grep latest]
+    [@@@ check for any bounds preventing use of latest packages (note that deprecated packes will show up in this list; ignore those): cabal sandbox delete; stack build --stack-yaml=stack-nightly.yaml --dry-run && cabal sandbox init && cabal update && PATH=$(stack --stack-yaml=stack-nightly.yaml path --compiler-bin):$PATH cabal install --enable-test --enable-bench --dry-run | grep latest]
     [@@@ try building with latest allowed by bounds:
     PATH=$(stack --stack-yaml=stack-nightly.yaml path --compiler-bin):$PATH cabal install --only-dependencies && cabal install --enable-test -f integration-tests
     @@@]
@@ -72,7 +76,7 @@
     * Changelog: add new "Unreleased changes" section
 * In RC branch:
     * Update the ChangeLog:
-        * Check for any important changes that missed getting an entry in
+        * [@@@ SKIP] Check for any important changes that missed getting an entry in
           Changelog (`git log origin/stable...HEAD`)
         * Check for any entries that snuck into the previous version's changes
           due to merges (`git diff origin/stable HEAD ChangeLog.md`)
@@ -145,12 +149,15 @@ consistent and clean stack version.
   Github release with a name like `stack-X.Y.Z-sdist-0.tar.gz`.
   [@@@ copy to `_release` and then use release script to upload sigs and checksums]
 
+    mv /Users/manny/fpco/stack-release/.stack-work/dist/x86_64-osx/Cabal-1.24.2.0/stack-X.Y.Z.tar.gz _release/stack-1.6.5-sdist-0.tar.gz
+    stack-release-script _release/stack-1.6.5-sdist-0.tar.gz.upload _release/stack-1.6.5-sdist-0.tar.gz.asc.upload _release/stack-1.6.5-sdist-0.tar.gz.sha256.upload
+
 * Use `etc/scripts/sdist-with-bounds.sh` to generate a Cabal spec and sdist with dependency bounds.
 
 * Upload `_release/stack-X.Y.Z-sdist-1.tar.gz` to the Github release.
   [@@@ copy to `_release` and then use release script to upload sigs and checksums]
 
-* Publish Github release. Include the changelog and in the description and use e.g. `git shortlog -s release..HEAD|sed $'s/^[0-9 \t]*/* /'|sort -f` to get the list of contributors.
+* Publish Github release. Include the changelog and in the description and use e.g. `git shortlog -s origin/release..HEAD|sed $'s/^[0-9 \t]*/* /'|sort -f` to get the list of contributors.
 
 * Push signed Git tag, matching Github release tag name, e.g.: `git tag -d vX.Y.Z; git tag -s -m vX.Y.Z vX.Y.Z && git push -f origin vX.Y.Z`
 
@@ -164,7 +171,19 @@ consistent and clean stack version.
 
 * In the `stable` branch:
     * package.yaml: bump the version number even third component (e.g. from 1.6.1 to 1.6.2)
-    * ChangeLog: Add an "Unreleased changes" section
+    * ChangeLog: Add an "Unreleased changes" section:
+
+        ## Unreleased changes
+
+        Release notes:
+
+        Major changes:
+
+        Behavior changes:
+
+        Other enhancements:
+
+        Bug fixes:
 
 * Delete the RC branch (locally and on origin)
 
@@ -424,6 +443,7 @@ Import the `dev@fpcomplete.com` (0x575159689BEFB442) GPG secret key
 
     The script at `etc/scripts/mirror-ghc-bindists-to-github.sh` will help with
     this. See the comments within the script.
+    [@@@ dan burton  has a script that does some of this too - https://gist.github.com/DanBurton/9d5655f64ab5d5f2a588e6fb809481fc   https://fpcomplete.slack.com/archives/D0ACX36BB/p1520536430000625]
 
   * Build any additional required bindists (see below for instructions)
 
@@ -438,7 +458,7 @@ Import the `dev@fpcomplete.com` (0x575159689BEFB442) GPG secret key
     update the `content-length` and `sha1` values.
 
 
-@@@ PATCH FOR TINFO6 `configure`
+@@@ PATCH FOR TINFO6 `configure` FOR GENTOO
 ```
 --- ../configure.ORIG 2017-12-27 16:05:40.509226151 +0000
 +++ configure 2017-12-27 16:06:02.222226151 +0000
@@ -469,6 +489,8 @@ Import the `dev@fpcomplete.com` (0x575159689BEFB442) GPG secret key
 ```
 
 ### Building GHC
+
+@@@ check out https://github.com/bgamari/ghc-utils/blob/master/rel-eng/bin-release.sh, which is the script used to official bindists
 
 On systems with a small `/tmp`, you should set TMP and TEMP to an alternate
 location.
@@ -560,30 +582,314 @@ stack exec test-exe
 - eventually drop checks for nopie, tinfo6, and ncurses6 builds
 
 
-### Arch
+### Debian stretch (standard -no-pie)
 
-docker run -ti base/archlinux
+docker run -ti --name stack-debian-stretch-tmp debian:stretch
+apt-get update && apt-get install -y curl vim less git
+
+### Arch (tinfo6 -no-pie)
+
+docker run -ti --name stack-arch-tmp base/archlinux
 pacman -Syu make gcc git
 
-### Sabayon (Gentoo)
+### Sabayon/Gentoo (tinfo6 --no-pie)
 
-docker run -ti --rm sabayon/base-amd64 bash
+docker run -ti --name stack-gentoo-tmp sabayon/base-amd64 bash
 equo install git gcc make vim
 
-### Fedora
+### Void (ncurses6 -no-pie)
 
-docker run -ti --rm fedora:27 bash
+docker run -ti --name stack-void-tmp voidlinux/voidlinux bash
+xbps-install -S curl gcc make xz git vim perl gmp-devel
+
+### Ubuntu 16.04 (standard)
+
+docker run -ti --name stack-ubuntu1604-tmp ubuntu:16.04
+apt-get update && apt-get install -y curl vim less git
+
+### Fedora 27
+
+docker run -ti --name stack-fedora27-tmp fedora:27 bash
 dnf install -y git
 
 ### CentOS 7
 
-docker run -ti --rm centos:7
+docker run -ti  --name stack-centos7-tmp centos:7
 yum install -y git
 
 ### General
 
-curl https://get.haskellstack.org/ |sh
+curl https://get.haskellstack.org/ |sh && \
+cd $HOME && \
 git clone https://github.com/borsboom/stack-test-nopie.git
-cd stack-test-nopie
-stack setup --verbose --setup-info-yaml=https://raw.githubusercontent.com/fpco/stackage-content/nopie-fixes-arch-gentoo/stack/stack-setup-2.yaml
-stack test
+
+#@@@ RESOLVER=lts-6.35
+#@@@ RESOLVER=lts-7.24
+#@@@ RESOLVER=lts-3.22
+RESOLVER=lts-2.22
+STACKAGE_CONTENT_BRANCH=more-nopie-bindists
+cd ~/stack-test-nopie && \
+rm -rf ~/.stack .stack-work && \
+stack --resolver=${RESOLVER} setup --setup-info-yaml=https://raw.githubusercontent.com/fpco/stackage-content/${STACKAGE_CONTENT_BRANCH}/stack/stack-setup-2.yaml && \
+stack --resolver=${RESOLVER} test
+
+# Confirm that correct C compiler link flags set in settings file
+
+make-patched-bindists.sh:
+
+```
+#!/usr/bin/env bash
+set -xeu -o pipefail
+GHC_VERSION=7.10.1
+BINDISTS="linux32:ghc-7.10.1-i386-unknown-linux-deb7 linux64:ghc-7.10.1-x86_64-unknown-linux-deb7"
+PATCH_NAME=patch1
+rm -f setup-info-${GHC_VERSION}-${PATCH_NAME}.yaml
+#@@@: should just take each one on command-line and run script multipel times rather that iterating
+for BINDIST in $BINDISTS; do
+  BINDIST_KEY=${BINDIST%%:*}
+  BINDIST_NAME=${BINDIST##*:}
+  if [[ ! -s ${BINDIST_NAME}.tar.xz ]]; then
+    curl -L https://github.com/commercialhaskell/ghc/releases/download/ghc-${GHC_VERSION}-release/${BINDIST_NAME}.tar.xz >${BINDIST_NAME}.tar.xz.tmp
+    mv ${BINDIST_NAME}.tar.xz.tmp ${BINDIST_NAME}.tar.xz
+  fi
+  if [[ ! -s ${BINDIST_NAME}-${PATCH_NAME}.tar.xz ]]; then
+    rm -rf ghc-${GHC_VERSION}
+    tar xJvf ${BINDIST_NAME}.tar.xz
+    patch ghc-${GHC_VERSION}/configure <configure-${GHC_VERSION}.patch
+    tar cJvf ${BINDIST_NAME}-${PATCH_NAME}.tar.xz.tmp ghc-${GHC_VERSION} --owner=0 --group=0
+    mv ${BINDIST_NAME}-${PATCH_NAME}.tar.xz.tmp ${BINDIST_NAME}-${PATCH_NAME}.tar.xz
+  fi
+  if [[ ! -f ${BINDIST_NAME}-${PATCH_NAME}.tar.xz.upload ]]; then
+    github-release upload --file ${BINDIST_NAME}-${PATCH_NAME}.tar.xz --owner commercialhaskell --repo ghc --tag ghc-${GHC_VERSION}-release --token $GITHUB_AUTH_TOKEN --name ${BINDIST_NAME}-${PATCH_NAME}.tar.xz
+    touch ${BINDIST_NAME}-${PATCH_NAME}.tar.xz.upload
+  fi
+  tee -a setup-info-${GHC_VERSION}-${PATCH_NAME}.yaml <<EOF
+    ${BINDIST_KEY}-nopie:
+        ${GHC_VERSION}:
+            url: "https://github.com/commercialhaskell/ghc/releases/download/ghc-${GHC_VERSION}-release/${BINDIST_NAME}-${PATCH_NAME}.tar.xz"
+            content-length: $(ls -l ${BINDIST_NAME}-${PATCH_NAME}.tar.xz|awk '{print $5}')
+            sha1: $(sha1sum ${BINDIST_NAME}-${PATCH_NAME}.tar.xz|awk '{print $1}')
+EOF
+done
+```
+
+
+configure-7.8.4.patch:
+
+```
+--- configure.orig  2018-02-02 14:10:19.773144150 +0000
++++ configure 2018-02-02 14:11:19.180373715 +0000
+@@ -4460,6 +4460,33 @@
+ GccVersion=$fp_cv_gcc_version
+
+
++   # This patch seems to fix linking when GCC has PIE enabled by default
++   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether GCC supports -no-pie" >&5
++$as_echo_n "checking whether GCC supports -no-pie... " >&6; }
++   echo 'int main() { return 0; }' > conftest.c
++   # Some GCC versions only warn when passed an unrecognized flag.
++   if $CC -no-pie -x c /dev/null -dM -E > conftest.txt 2>&1 && ! grep -i unrecognized conftest.txt > /dev/null 2>&1; then
++       CONF_GCC_LINKER_OPTS_STAGE2="$CONF_GCC_LINKER_OPTS_STAGE2 -no-pie"
++       { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++$as_echo "yes" >&6; }
++   else
++       { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++$as_echo "no" >&6; }
++       { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether GCC supports --no-pie" >&5
++    $as_echo_n "checking whether GCC supports --no-pie... " >&6; }
++       echo 'int main() { return 0; }' > conftest.c
++       # Some GCC versions only warn when passed an unrecognized flag.
++       if $CC --no-pie -x c /dev/null -dM -E > conftest.txt 2>&1 && ! grep -i unrecognized conftest.txt > /dev/null 2>&1; then
++           CONF_GCC_LINKER_OPTS_STAGE2="$CONF_GCC_LINKER_OPTS_STAGE2 --no-pie"
++           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++    $as_echo "yes" >&6; }
++       else
++           { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++    $as_echo "no" >&6; }
++       fi
++       rm -f conftest.c conftest.o conftest
++   fi
++   rm -f conftest.c conftest.o conftest
+
+
+ ac_ext=c
+```
+
+configure-7.10.1.patch:
+
+```
+--- configure.orig  2018-02-02 05:40:55.120168597 -0800
++++ configure 2018-02-02 05:42:00.261722166 -0800
+@@ -5142,6 +5142,33 @@
+ GccVersion=$fp_cv_gcc_version
+
+
++   # This patch seems to fix linking when GCC has PIE enabled by default
++   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether GCC supports -no-pie" >&5
++$as_echo_n "checking whether GCC supports -no-pie... " >&6; }
++   echo 'int main() { return 0; }' > conftest.c
++   # Some GCC versions only warn when passed an unrecognized flag.
++   if $CC -no-pie -x c /dev/null -dM -E > conftest.txt 2>&1 && ! grep -i unrecognized conftest.txt > /dev/null 2>&1; then
++       CONF_GCC_LINKER_OPTS_STAGE2="$CONF_GCC_LINKER_OPTS_STAGE2 -no-pie"
++       { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++$as_echo "yes" >&6; }
++   else
++       { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++$as_echo "no" >&6; }
++       { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether GCC supports --no-pie" >&5
++    $as_echo_n "checking whether GCC supports --no-pie... " >&6; }
++       echo 'int main() { return 0; }' > conftest.c
++       # Some GCC versions only warn when passed an unrecognized flag.
++       if $CC --no-pie -x c /dev/null -dM -E > conftest.txt 2>&1 && ! grep -i unrecognized conftest.txt > /dev/null 2>&1; then
++           CONF_GCC_LINKER_OPTS_STAGE2="$CONF_GCC_LINKER_OPTS_STAGE2 --no-pie"
++           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++    $as_echo "yes" >&6; }
++       else
++           { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++    $as_echo "no" >&6; }
++       fi
++       rm -f conftest.c conftest.o conftest
++   fi
++   rm -f conftest.c conftest.o conftest
+
+
+ ac_ext=c
+```
+
+
+configure-7.10.2.patch
+
+```
+--- configure.orig  2018-02-02 05:40:55.120168597 -0800
++++ configure 2018-02-02 05:42:00.261722166 -0800
+@@ -5142,6 +5142,33 @@
+ GccVersion=$fp_cv_gcc_version
+
+
++   # This patch seems to fix linking when GCC has PIE enabled by default
++   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether GCC supports -no-pie" >&5
++$as_echo_n "checking whether GCC supports -no-pie... " >&6; }
++   echo 'int main() { return 0; }' > conftest.c
++   # Some GCC versions only warn when passed an unrecognized flag.
++   if $CC -no-pie -x c /dev/null -dM -E > conftest.txt 2>&1 && ! grep -i unrecognized conftest.txt > /dev/null 2>&1; then
++       CONF_GCC_LINKER_OPTS_STAGE2="$CONF_GCC_LINKER_OPTS_STAGE2 -no-pie"
++       { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++$as_echo "yes" >&6; }
++   else
++       { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++$as_echo "no" >&6; }
++       { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether GCC supports --no-pie" >&5
++    $as_echo_n "checking whether GCC supports --no-pie... " >&6; }
++       echo 'int main() { return 0; }' > conftest.c
++       # Some GCC versions only warn when passed an unrecognized flag.
++       if $CC --no-pie -x c /dev/null -dM -E > conftest.txt 2>&1 && ! grep -i unrecognized conftest.txt > /dev/null 2>&1; then
++           CONF_GCC_LINKER_OPTS_STAGE2="$CONF_GCC_LINKER_OPTS_STAGE2 --no-pie"
++           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++    $as_echo "yes" >&6; }
++       else
++           { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++    $as_echo "no" >&6; }
++       fi
++       rm -f conftest.c conftest.o conftest
++   fi
++   rm -f conftest.c conftest.o conftest
+
+
+ ac_ext=c
+```
+
+configure-7.10.3.patch:
+
+```
+--- configure.orig  2018-02-02 05:40:55.120168597 -0800
++++ configure 2018-02-02 05:42:00.261722166 -0800
+@@ -5142,6 +5142,33 @@
+ GccVersion=$fp_cv_gcc_version
+
+
++   # This patch seems to fix linking when GCC has PIE enabled by default
++   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether GCC supports -no-pie" >&5
++$as_echo_n "checking whether GCC supports -no-pie... " >&6; }
++   echo 'int main() { return 0; }' > conftest.c
++   # Some GCC versions only warn when passed an unrecognized flag.
++   if $CC -no-pie -x c /dev/null -dM -E > conftest.txt 2>&1 && ! grep -i unrecognized conftest.txt > /dev/null 2>&1; then
++       CONF_GCC_LINKER_OPTS_STAGE2="$CONF_GCC_LINKER_OPTS_STAGE2 -no-pie"
++       { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++$as_echo "yes" >&6; }
++   else
++       { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++$as_echo "no" >&6; }
++       { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether GCC supports --no-pie" >&5
++    $as_echo_n "checking whether GCC supports --no-pie... " >&6; }
++       echo 'int main() { return 0; }' > conftest.c
++       # Some GCC versions only warn when passed an unrecognized flag.
++       if $CC --no-pie -x c /dev/null -dM -E > conftest.txt 2>&1 && ! grep -i unrecognized conftest.txt > /dev/null 2>&1; then
++           CONF_GCC_LINKER_OPTS_STAGE2="$CONF_GCC_LINKER_OPTS_STAGE2 --no-pie"
++           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++    $as_echo "yes" >&6; }
++       else
++           { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++    $as_echo "no" >&6; }
++       fi
++       rm -f conftest.c conftest.o conftest
++   fi
++   rm -f conftest.c conftest.o conftest
+
+
+ ac_ext=c
+```
+
+ configure-8.0.1.patch:
+
+```
+--- ../configure-8.0.1.orig  2018-02-01 17:51:51.577431743 +0000
++++ configure 2018-02-01 17:53:12.374095626 +0000
+@@ -5259,20 +5259,47 @@
+ if test "$fp_num1" -lt "$fp_num2"; then :
+   GccLT46=YES
+ fi
+
+ fi
+ { $as_echo "$as_me:${as_lineno-$LINENO}: result: $fp_cv_gcc_version" >&5
+ $as_echo "$fp_cv_gcc_version" >&6; }
+ GccVersion=$fp_cv_gcc_version
+
+
++   # This patch seems to fix linking when GCC has PIE enabled by default
++   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether GCC supports -no-pie" >&5
++$as_echo_n "checking whether GCC supports -no-pie... " >&6; }
++   echo 'int main() { return 0; }' > conftest.c
++   # Some GCC versions only warn when passed an unrecognized flag.
++   if $CC -no-pie -x c /dev/null -dM -E > conftest.txt 2>&1 && ! grep -i unrecognized conftest.txt > /dev/null 2>&1; then
++       CONF_GCC_LINKER_OPTS_STAGE2="$CONF_GCC_LINKER_OPTS_STAGE2 -no-pie"
++       { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++$as_echo "yes" >&6; }
++   else
++       { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++$as_echo "no" >&6; }
++       { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether GCC supports --no-pie" >&5
++    $as_echo_n "checking whether GCC supports --no-pie... " >&6; }
++       echo 'int main() { return 0; }' > conftest.c
++       # Some GCC versions only warn when passed an unrecognized flag.
++       if $CC --no-pie -x c /dev/null -dM -E > conftest.txt 2>&1 && ! grep -i unrecognized conftest.txt > /dev/null 2>&1; then
++           CONF_GCC_LINKER_OPTS_STAGE2="$CONF_GCC_LINKER_OPTS_STAGE2 --no-pie"
++           { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++    $as_echo "yes" >&6; }
++       else
++           { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++    $as_echo "no" >&6; }
++       fi
++       rm -f conftest.c conftest.o conftest
++   fi
++   rm -f conftest.c conftest.o conftest
+
+
+ ac_ext=c
+ ac_cpp='$CPP $CPPFLAGS'
+ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ ac_compiler_gnu=$ac_cv_c_compiler_gnu
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking how to run the C preprocessor" >&5
+ $as_echo_n "checking how to run the C preprocessor... " >&6; }
+ # On Suns, sometimes $CPP names a directory.
+```
