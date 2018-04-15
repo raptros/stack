@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -39,6 +40,9 @@ import qualified Data.ByteArray as Mem (convert)
 import qualified Data.ByteString.Base64.URL as B64URL
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as S8
+#ifdef mingw32_HOST_OS
+import           Data.Char (ord)
+#endif
 import qualified Data.Map as M
 import qualified Data.Set as Set
 import qualified Data.Store as Store
@@ -53,6 +57,7 @@ import           Stack.Types.BuildPlan
 import           Stack.Types.Compiler
 import           Stack.Types.Config
 import           Stack.Types.GhcPkgId
+import           Stack.Types.NamedComponent
 import           Stack.Types.Package
 import           Stack.Types.PackageIdentifier
 import           Stack.Types.Version
@@ -106,44 +111,62 @@ markExeNotInstalled loc ident = do
     ident' <- parseRelFile $ packageIdentifierString ident
     liftIO $ ignoringAbsence (removeFile $ dir </> ident')
 
--- | Try to read the dirtiness cache for the given package directory.
-tryGetBuildCache :: (MonadUnliftIO m, MonadReader env m, MonadThrow m, MonadLogger m, HasEnvConfig env)
-                 => Path Abs Dir -> m (Maybe (Map FilePath FileCacheInfo))
-tryGetBuildCache dir = liftM (fmap buildCacheTimes) . $(versionedDecodeFile buildCacheVC) =<< buildCacheFile dir
+buildCacheFile :: (HasEnvConfig env, MonadReader env m, MonadThrow m)
+               => Path Abs Dir
+               -> NamedComponent
+               -> m (Path Abs File)
+buildCacheFile dir component = do
+    cachesDir <- buildCachesDir dir
+    let nonLibComponent prefix name = prefix <> "-" <> T.unpack name
+    cacheFileName <- parseRelFile $ case component of
+        CLib -> "lib"
+        CExe name -> nonLibComponent "exe" name
+        CTest name -> nonLibComponent "test" name
+        CBench name -> nonLibComponent "bench" name
+    return $ cachesDir </> cacheFileName
 
 -- | Try to read the dirtiness cache for the given package directory.
-tryGetConfigCache :: (MonadUnliftIO m, MonadReader env m, MonadThrow m, HasEnvConfig env, MonadLogger m)
-                  => Path Abs Dir -> m (Maybe ConfigCache)
+tryGetBuildCache :: HasEnvConfig env
+                 => Path Abs Dir
+                 -> NamedComponent
+                 -> RIO env (Maybe (Map FilePath FileCacheInfo))
+tryGetBuildCache dir component = liftM (fmap buildCacheTimes) . $(versionedDecodeFile buildCacheVC) =<< buildCacheFile dir component
+
+-- | Try to read the dirtiness cache for the given package directory.
+tryGetConfigCache :: HasEnvConfig env
+                  => Path Abs Dir -> RIO env (Maybe ConfigCache)
 tryGetConfigCache dir = $(versionedDecodeFile configCacheVC) =<< configCacheFile dir
 
 -- | Try to read the mod time of the cabal file from the last build
-tryGetCabalMod :: (MonadUnliftIO m, MonadReader env m, MonadThrow m, HasEnvConfig env, MonadLogger m)
-               => Path Abs Dir -> m (Maybe ModTime)
+tryGetCabalMod :: HasEnvConfig env
+               => Path Abs Dir -> RIO env (Maybe ModTime)
 tryGetCabalMod dir = $(versionedDecodeFile modTimeVC) =<< configCabalMod dir
 
 -- | Write the dirtiness cache for this package's files.
-writeBuildCache :: (MonadIO m, MonadReader env m, MonadThrow m, HasEnvConfig env, MonadLogger m)
-                => Path Abs Dir -> Map FilePath FileCacheInfo -> m ()
-writeBuildCache dir times = do
-    fp <- buildCacheFile dir
+writeBuildCache :: HasEnvConfig env
+                => Path Abs Dir
+                -> NamedComponent
+                -> Map FilePath FileCacheInfo -> RIO env ()
+writeBuildCache dir component times = do
+    fp <- buildCacheFile dir component
     $(versionedEncodeFile buildCacheVC) fp BuildCache
         { buildCacheTimes = times
         }
 
 -- | Write the dirtiness cache for this package's configuration.
-writeConfigCache :: (MonadIO m, MonadReader env m, MonadThrow m, HasEnvConfig env, MonadLogger m)
+writeConfigCache :: HasEnvConfig env
                 => Path Abs Dir
                 -> ConfigCache
-                -> m ()
+                -> RIO env ()
 writeConfigCache dir x = do
     fp <- configCacheFile dir
     $(versionedEncodeFile configCacheVC) fp x
 
 -- | See 'tryGetCabalMod'
-writeCabalMod :: (MonadIO m, MonadReader env m, MonadThrow m, HasEnvConfig env, MonadLogger m)
+writeCabalMod :: HasEnvConfig env
               => Path Abs Dir
               -> ModTime
-              -> m ()
+              -> RIO env ()
 writeCabalMod dir x = do
     fp <- configCabalMod dir
     $(versionedEncodeFile modTimeVC) fp x
@@ -171,42 +194,42 @@ flagCacheFile installed = do
     return $ dir </> rel
 
 -- | Loads the flag cache for the given installed extra-deps
-tryGetFlagCache :: (MonadUnliftIO m, MonadThrow m, MonadReader env m, HasEnvConfig env, MonadLogger m)
+tryGetFlagCache :: HasEnvConfig env
                 => Installed
-                -> m (Maybe ConfigCache)
+                -> RIO env (Maybe ConfigCache)
 tryGetFlagCache gid = do
     fp <- flagCacheFile gid
     $(versionedDecodeFile configCacheVC) fp
 
-writeFlagCache :: (MonadIO m, MonadReader env m, HasEnvConfig env, MonadThrow m, MonadLogger m)
+writeFlagCache :: HasEnvConfig env
                => Installed
                -> ConfigCache
-               -> m ()
+               -> RIO env ()
 writeFlagCache gid cache = do
     file <- flagCacheFile gid
     ensureDir (parent file)
     $(versionedEncodeFile configCacheVC) file cache
 
 -- | Mark a test suite as having succeeded
-setTestSuccess :: (MonadIO m, MonadThrow m, MonadReader env m, HasEnvConfig env, MonadLogger m)
+setTestSuccess :: HasEnvConfig env
                => Path Abs Dir
-               -> m ()
+               -> RIO env ()
 setTestSuccess dir = do
     fp <- testSuccessFile dir
     $(versionedEncodeFile testSuccessVC) fp True
 
 -- | Mark a test suite as not having succeeded
-unsetTestSuccess :: (MonadIO m, MonadThrow m, MonadReader env m, HasEnvConfig env, MonadLogger m)
+unsetTestSuccess :: HasEnvConfig env
                  => Path Abs Dir
-                 -> m ()
+                 -> RIO env ()
 unsetTestSuccess dir = do
     fp <- testSuccessFile dir
     $(versionedEncodeFile testSuccessVC) fp False
 
 -- | Check if the test suite already passed
-checkTestSuccess :: (MonadUnliftIO m, MonadThrow m, MonadReader env m, HasEnvConfig env, MonadLogger m)
+checkTestSuccess :: HasEnvConfig env
                  => Path Abs Dir
-                 -> m Bool
+                 -> RIO env Bool
 checkTestSuccess dir =
     liftM
         (fromMaybe False)
@@ -229,11 +252,11 @@ checkTestSuccess dir =
 --
 -- We only pay attention to non-directory options. We don't want to avoid a
 -- cache hit just because it was installed in a different directory.
-precompiledCacheFile :: (MonadThrow m, MonadReader env m, HasEnvConfig env, MonadLogger m)
+precompiledCacheFile :: HasEnvConfig env
                      => PackageLocationIndex FilePath
                      -> ConfigureOpts
                      -> Set GhcPkgId -- ^ dependencies
-                     -> m (Maybe (Path Abs File))
+                     -> RIO env (Maybe (Path Abs File))
 precompiledCacheFile loc copts installedPackageIDs = do
   ec <- view envConfigL
 
@@ -254,6 +277,14 @@ precompiledCacheFile loc copts installedPackageIDs = do
             PLRepo r -> Just $ T.unpack (repoCommit r) ++ repoSubdirs r
 
   forM mpkgRaw $ \pkgRaw -> do
+    platformRelDir <- platformGhcRelDir
+    let precompiledDir =
+              view stackRootL ec
+          </> $(mkRelDir "precompiled")
+          </> platformRelDir
+          </> compiler
+          </> cabal
+
     pkg <-
       case parseRelDir pkgRaw of
         Just x -> return x
@@ -263,7 +294,6 @@ precompiledCacheFile loc copts installedPackageIDs = do
                  $ B64URL.encode
                  $ TE.encodeUtf8
                  $ T.pack pkgRaw
-    platformRelDir <- platformGhcRelDir
 
     -- In Cabal versions 1.22 and later, the configure options contain the
     -- installed package IDs, which is what we need for a unique hash.
@@ -274,23 +304,27 @@ precompiledCacheFile loc copts installedPackageIDs = do
     hashPath <- parseRelFile $ S8.unpack $ B64URL.encode
               $ Mem.convert $ hashWith SHA256 $ Store.encode input
 
-    return $ view stackRootL ec
-         </> $(mkRelDir "precompiled")
-         </> platformRelDir
-         </> compiler
-         </> cabal
-         </> pkg
-         </> hashPath
+    let longPath = precompiledDir </> pkg </> hashPath
+
+    -- See #3649 - shorten the paths on windows if MAX_PATH will be
+    -- violated. Doing this only when necessary allows use of existing
+    -- precompiled packages.
+    if pathTooLong (toFilePath longPath) then do
+        shortPkg <- shaPath pkg
+        shortHash <- shaPath hashPath
+        return $ precompiledDir </> shortPkg </> shortHash
+    else
+        return longPath
 
 -- | Write out information about a newly built package
-writePrecompiledCache :: (MonadThrow m, MonadReader env m, HasEnvConfig env, MonadIO m, MonadLogger m)
+writePrecompiledCache :: HasEnvConfig env
                       => BaseConfigOpts
                       -> PackageLocationIndex FilePath
                       -> ConfigureOpts
                       -> Set GhcPkgId -- ^ dependencies
                       -> Installed -- ^ library
                       -> Set Text -- ^ executables
-                      -> m ()
+                      -> RIO env ()
 writePrecompiledCache baseConfigOpts loc copts depIDs mghcPkgId exes = do
   mfile <- precompiledCacheFile loc copts depIDs
   forM_ mfile $ \file -> do
@@ -339,3 +373,20 @@ readPrecompiledCache loc copts depIDs = runMaybeT $
         { pcLibrary = mkAbs' <$> pcLibrary pc0
         , pcExes = mkAbs' <$> pcExes pc0
         }
+
+-- | Check if a filesystem path is too long.
+pathTooLong :: FilePath -> Bool
+#ifdef mingw32_HOST_OS
+pathTooLong path = utf16StringLength path >= win32MaxPath
+  where
+    win32MaxPath = 260
+    -- Calculate the length of a string in 16-bit units
+    -- if it were converted to utf-16.
+    utf16StringLength :: String -> Integer
+    utf16StringLength = sum . map utf16CharLength
+      where
+        utf16CharLength c | ord c < 0x10000 = 1
+                          | otherwise       = 2
+#else
+pathTooLong _ = False
+#endif

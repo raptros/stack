@@ -2,7 +2,7 @@ site_name: The Haskell Tool Stack
 site_description: The Haskell Tool Stack
 site_author: Stack contributors
 repo_url: https://github.com/commercialhaskell/stack/tree/master/doc
-copyright: Copyright (c) 2015-2017, Stack contributors
+copyright: Copyright (c) 2015-2018, Stack contributors
 docs_dir: doc
 site_dir: _site
 theme: readthedocs
@@ -19,6 +19,7 @@ pages:
   - User guide: GUIDE.md
   - FAQ: faq.md
   - Configuration (Project and Global): yaml_configuration.md
+  - stack.yaml vs cabal package files: stack_yaml_vs_cabal_package_file.md
   - Build command: build_command.md
   - Dependency visualization: dependency_visualization.md
   - Docker integration: docker_integration.md

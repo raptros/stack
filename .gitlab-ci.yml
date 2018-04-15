@@ -1,4 +1,4 @@
-image: registry.gitlab.fpcomplete.com/fpco/default-build-image:1037
+image: registry.gitlab.fpcomplete.com/fpco/default-build-image:1954
 
 cache:
   key: "$CI_BUILD_NAME"
@@ -16,17 +16,16 @@ build:
   stage: build
   only:
     - master
-  script:
+    - stable
+  script: &build
     - export PATH=$HOME/.local/bin:$PATH
     - (cd etc/scripts && stack --install-ghc install --pedantic)
     - stack-release-script check
 
-docker_image_lts-9:
+manual_build:
   stage: build
   when: manual
-  script:
-    - docker login -u "$PROD_DOCKER_USERNAME" -p "$PROD_DOCKER_PASSWORD"
-    - etc/dockerfiles/stack-build/build.sh --push lts-9
+  script: *build
 
 docker_image_lts-10:
   stage: build
@@ -34,3 +33,10 @@ docker_image_lts-10:
   script:
     - docker login -u "$PROD_DOCKER_USERNAME" -p "$PROD_DOCKER_PASSWORD"
     - etc/dockerfiles/stack-build/build.sh --push lts-10
+
+docker_image_lts-11:
+  stage: build
+  when: manual
+  script:
+    - docker login -u "$PROD_DOCKER_USERNAME" -p "$PROD_DOCKER_PASSWORD"
+    - etc/dockerfiles/stack-build/build.sh --push lts-11

@@ -1,9 +1,0 @@
-resolver: nightly-2017-12-20
-nix:
-  # --nix on the command-line to enable.
-  enable: false
-  packages:
-    - zlib
-    - http-client-tls-0.3.4
-extra-deps:
-- bindings-uname-0.1

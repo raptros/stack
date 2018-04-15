@@ -1,23 +1,65 @@
 # Changelog
 
+
 ## Unreleased changes
 
 Release notes:
 
 Major changes:
 
-Behaviour changes:
+* Upgrade from Cabal 2.0 to Cabal 2.2
+
+Behavior changes:
+
+* `stack setup` no longer uses different GHC configure options on Linux
+  distributions that use GCC with PIE enabled by default.  GHC detects
+  this itself since ghc-8.0.2, and Stack's attempted workaround for older
+  versions caused more problems than it solved.
+
+* `stack new` no longer initializes a project if the project template contain
+   a stack.yaml file.
 
 Other enhancements:
 
 * A new sub command `ls` has been introduced to stack to view
   local and remote snapshots present in the system. Use `stack ls
   snapshots --help` to get more details about it.
+*`list-dependencies` has been deprecated. The functionality has
+  to accessed through the new `ls dependencies` interface. See
+  [#3669](https://github.com/commercialhaskell/stack/issues/3669)
+  for details.
 * Specify User-Agent HTTP request header on every HTTP request.
   See [#3628](https://github.com/commercialhaskell/stack/issues/3628) for details.
+* `stack setup` looks for GHC bindists and installations by any OS key
+  that is compatible (rather than only checking a single one).   This is
+  relevant on Linux where different distributions may have different
+  combinations of libtinfo 5/6, ncurses 5/6, and gmp 4/5, and will allow
+  simpifying the setup-info metadata YAML for future GHC releases.
+* The build progress bar reports names of packages currently building.
+* `stack setup --verbose` causes verbose output of GHC configure process.
+  See [#3716](https://github.com/commercialhaskell/stack/issues/3716)
+* Improve the error message when an `extra-dep` from a path or git reference can't be found
+  See [#3808](https://github.com/commercialhaskell/stack/pull/3808)
+* Nix integration is now disabled on windows even if explicitly enabled,
+  since it isn't supported. See
+  [#3600](https://github.com/commercialhaskell/stack/issues/3600)
+* `stack build` now supports a new flag `--keep-tmp-files` to retain intermediate
+  files and directories for the purpose of debugging.
+  It is best used with ghc's equivalent flag,
+  i.e. `stack build --keep-tmp-files --ghc-options=-keep-tmp-files`.
+  See [#3857](https://github.com/commercialhaskell/stack/issues/3857)
+* Improved error messages for snapshot parse exceptions
 
 Bug fixes:
 
+
+
+## v1.6.5
+
+Bug fixes:
+* 1.6.1 introduced a change that made some precompiled cache files use
+  longer paths, sometimes causing builds to fail on windows. This has been
+  fixed. See [#3649](https://github.com/commercialhaskell/stack/issues/3649)
 * The script interpreter's implicit file arguments are now passed before other
   arguments. See [#3658](https://github.com/commercialhaskell/stack/issues/3658).
   In particular, this makes it possible to pass `-- +RTS ... -RTS` to specify
@@ -30,6 +72,48 @@ Bug fixes:
   may interfere with benchmarks. It also prevented benchmark output from
   being displayed by default. This is now fixed. See
   [#3663](https://github.com/commercialhaskell/stack/issues/3663).
+* Some unnecessary rebuilds when no files were changed are now avoided, by
+  having a separate build cache for each component of a package. See
+  [#3732](https://github.com/commercialhaskell/stack/issues/3732).
+* Correct the behavior of promoting a package from snapshot to local
+  package. This would get triggered when version bounds conflicted in
+  a snapshot, which could be triggered via Hackage revisions for old
+  packages. This also should allow custom snapshots to define
+  conflicting versions of packages without issue. See
+  [Stackage issue #3185](https://github.com/fpco/stackage/issues/3185).
+* When promoting packages from snapshot to local, we were
+  occassionally discarding the actual package location content and
+  instead defaulting to pulling the package from the index. We now
+  correctly retain this information. Note that if you were affected by
+  this bug, you will likely need to delete the binary build cache
+  associated with the relevant custom snapshot. See
+  [#3714](https://github.com/commercialhaskell/stack/issues/3714).
+* `stack ghci` now allows loading multiple packages with the same
+  module name, as long as they have the same filepath. See
+  [#3776](https://github.com/commercialhaskell/stack/pull/3776).
+* `stack ghci` no longer always adds a dependency on `base`. It is
+  now only added when there are no local targets. This allows it to
+  be to load code that uses replacements for `base`. See
+  [#3589](https://github.com/commercialhaskell/stack/issues/3589#issuecomment)
+* `--no-rerun-tests` has been fixed. Previously, after running a test
+  we were forgetting to record the result, which meant that all tests
+  always ran even if they had already passed before. See
+  [#3770](https://github.com/commercialhaskell/stack/pull/3770).
+* Includes a patched version of `hackage-security` which fixes both
+  some issues around asynchronous exception handling, and moves from
+  directory locking to file locking, making the update mechanism
+  resilient against SIGKILL and machine failure. See
+  [hackage-security #187](https://github.com/haskell/hackage-security/issues/187)
+  and [#3073](https://github.com/commercialhaskell/stack/issues/3073).
+* `stack ghci` now uses correct paths for autogen files with
+  [#3791](https://github.com/commercialhaskell/stack/issues/3791)
+
+
+## v1.6.3.1
+
+Hackage-only release with no user facing changes (updated to build with
+newer version of hpack dependency).
+
 
 ## v1.6.3
 

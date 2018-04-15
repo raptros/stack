@@ -1,6 +1,7 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- | Constants used throughout the project.
 
@@ -32,6 +33,7 @@ module Stack.Constants
     ,minTerminalWidth
     ,maxTerminalWidth
     ,defaultTerminalWidth
+    ,osIsWindows
     )
     where
 
@@ -241,3 +243,12 @@ maxTerminalWidth = 200
 -- automatically detect it and when the user doesn't supply one.
 defaultTerminalWidth :: Int
 defaultTerminalWidth = 100
+
+-- | True if using Windows OS.
+osIsWindows :: Bool
+osIsWindows =
+#ifdef WINDOWS
+  True
+#else
+  False
+#endif

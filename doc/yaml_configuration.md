@@ -22,6 +22,10 @@ specific options from `~/.stack/global-project/stack.yaml`. When stack is
 invoked inside a stack project, only options from `<project dir>/stack.yaml` are
 used, and `~/.stack/global-project/stack.yaml` is ignored.
 
+*Note 2:* A common source of confusion is the distinction between configuration
+in a `stack.yaml` file versus a cabal file. If you're trying to understand this
+breakdown, see [stack vs cabal config](stack_yaml_vs_cabal_package_file.md).
+
 ## Project-specific config
 
 Project-specific options are only valid in the `stack.yaml` file local to a
@@ -743,6 +747,7 @@ build:
   copy-bins: false
   prefetch: false
   keep-going: false
+  keep-tmp-files: false
 
   # NOTE: global usage of haddock can cause build failures when documentation is
   # incorrectly formatted.  This could also affect scripts which use stack.
@@ -838,7 +843,7 @@ templates:
     author-name: Your Name
     author-email: youremail@example.com
     category: Your Projects Category
-    copyright: 'Copyright (c) 2017 Your Name'
+    copyright: 'Copyright (c) 2018 Your Name'
     github-username: yourusername
 ```
 
