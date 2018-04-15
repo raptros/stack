@@ -10,7 +10,7 @@ if errorlevel 1 exit /b
 cd %BUILD_DIR%
 REM @@@ add --certificate-name?
 REM @@@ release
-%RELEASE_SCRIPT% --no-test-haddocks --arch=x86_64 %1 %2 %3 %4 %5 %6 %7 %8 %9 upload
+%RELEASE_SCRIPT% --no-test-haddocks --arch=x86_64 %1 %2 %3 %4 %5 %6 %7 %8 %9 release
 if errorlevel 1 exit /b
 REM @@@ change back to reease
 %RELEASE_SCRIPT% --no-test-haddocks --arch=i386 %1 %2 %3 %4 %5 %6 %7 %8 %9 upload

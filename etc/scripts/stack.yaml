@@ -1,1 +1,2 @@
-resolver: lts-11.2
+#@@@ don't need if we're always using stack script mode
+resolver: lts-11.5

@@ -1,3 +1,4 @@
+#@@@ don't need if we're always using stack script mode
 name: stack-scripts
 version: '0.0.0.0'
 author: Emanuel Borsboom

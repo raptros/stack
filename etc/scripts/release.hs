@@ -1,3 +1,26 @@
+{- stack script
+    --resolver lts-11.5
+    --install-ghc
+    --package Cabal
+    --package aeson
+    --package bytestring
+    --package case-insensitive
+    --package conduit
+    --package conduit-combinators
+    --package cryptohash
+    --package directory
+    --package extra
+    --package http-conduit
+    --package http-types
+    --package mime-types
+    --package process
+    --package resourcet
+    --package shake
+    --package tar
+    --package text
+    --package zip-archive
+    --package zlib
+-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -47,8 +70,8 @@ main =
                      , shakeChange = ChangeModtimeAndDigestInput }
         options $
         \flags args -> do
-            -- 'stack list-dependencies' just ensures that 'stack.cabal' is generated from hpack
-            _ <- readProcess "stack" ["list-dependencies"] ""
+            -- 'stack build --dry-run' just ensures that 'stack.cabal' is generated from hpack
+            _ <- readProcess "stack" ["build", "--dry-run"] ""
             gStackPackageDescription <-
                 packageDescription <$> readGenericPackageDescription silent "stack.cabal"
             gGithubAuthToken <- lookupEnv githubAuthTokenEnvVar

@@ -27,6 +27,7 @@
 * @@@ upgrade to freebsd 12 for build?
 * @@@ for stack-1.7 built w/ ghc 8.2.2, do an aarch64 bindist
 * @@@ switch to debian 8 for building linux binaries, to match GHC
+* @@@ NOTE: that stack-nightly removed, since only nightlies older than LTS-11 work
 
 ## Version scheme
 
@@ -41,7 +42,7 @@
 * Check for any P0 and P1 issues
 * Check for un-merged pull requests
 * Ensure `release` and `stable` branches merged to `master`
-* Check compatibility with latest Stackage snapshots
+* Check compatibility with latest LTS Stackage snapshots
     * `stack-*.yaml` (where `*` is not `nightly`), __including the ones in
       subdirectories__: bump to use latest LTS minor
       version (be sure any extra-deps that exist only for custom flags have
@@ -50,11 +51,11 @@
     * Run `stack --stack-yaml=stack-*.yaml test --pedantic` (replace `*` with
       the actual file)
 * Check compatibility with latest nightly stackage snapshot:
-    * Update `stack-nightly.yaml` with latest nightly and remove extra-deps (be
+    * Update `stack-nightly.yaml` with latest nightly and remove unnecessary extra-deps (be
       sure any extra-deps that exist only for custom flags have versions
       matching the snapshot)
     * Run `stack --stack-yaml=stack-nightly.yaml test --pedantic`
-* Check compatibility with latest Hackage:
+* [@@@ SKIP] Check compatibility with latest Hackage:
     [@@@ export PATH=$(stack --stack-yaml=stack-nightly.yaml path --compiler-bin):$PATH
     [@@@ check for any bounds preventing use of latest packages (note that deprecated packes will show up in this list; ignore those): cabal sandbox delete; stack build --stack-yaml=stack-nightly.yaml --dry-run && cabal sandbox init && cabal update && PATH=$(stack --stack-yaml=stack-nightly.yaml path --compiler-bin):$PATH cabal install --enable-test --enable-bench --dry-run | grep latest]
     [@@@ try building with latest allowed by bounds:
@@ -69,11 +70,25 @@
   thorough test for every platform/variant prior to uploading, so this is just a
   pre-check
 * In master branch:
-    * ChangeLog: rename the "Unreleased changes" section to the new version
+    * package.yaml: bump to next release candidate version (add a `.1` patchlevel, e.g. `X.Y.0.1`)
+    * ChangeLog: rename the "Unreleased changes" section to the same version as package.yaml
 * Cut a release candidate branch `rc/vX.Y` from master
 * In master branch:
     * package.yaml: bump version to next major (second) component with `.0` third component (e.g. from 1.6.2 to 1.7.0)
-    * Changelog: add new "Unreleased changes" section
+    * Changelog: add new "Unreleased changes" section:
+      ```
+      ## Unreleased changes
+
+      Release notes:
+
+      Major changes:
+
+      Behavior changes:
+
+      Other enhancements:
+
+      Bug fixes:
+      ```
 * In RC branch:
     * Update the ChangeLog:
         * [@@@ SKIP] Check for any important changes that missed getting an entry in
@@ -81,16 +96,11 @@
         * Check for any entries that snuck into the previous version's changes
           due to merges (`git diff origin/stable HEAD ChangeLog.md`)
     * Review documentation for any changes that need to be made
-        * Search for old Stack version, unstable stack version, and the next
-          "obvious" version in sequence (if doing a non-obvious jump), and
-          `UNRELEASED` and replace with new version
-        * Look for any links to "latest" documentation, replace with version tag
         * Ensure all documentation pages listed in `mkdocs.yaml`
           (`git diff --stat origin/stable..HEAD doc/`)
         * Any new documentation pages should have the "may not be correct for
           the released version of Stack" warning at the top.
-    * Update `.github/ISSUE_TEMPLATE.md` to point at the new version.
-    * Check for new [FreeBSD release](https://www.freebsd.org/releases/).
+    * Check for new major [FreeBSD release](https://www.freebsd.org/releases/).  If so, add a `Vagrantfile` for it in `etc/vagrant/freebsd-X.Y-amd64` and update `etc/scripts/vagrant-releases.hs`
     * Check that no new entries need to be added to
       [releases.yaml](https://github.com/fpco/stackage-content/blob/master/stack/releases.yaml),
       [install_and_upgrade.md](https://github.com/commercialhaskell/stack/blob/master/doc/install_and_upgrade.md),
@@ -103,6 +113,19 @@
         * [CentOS](https://wiki.centos.org/Download)
             * 6 EOL 2020-NOV-30
             * 7 EOL 2024-JUN-30
+
+* Follow steps in *Release process* below tagged with `[RC]` to make a release candidate
+
+* @@@ FOR REAL RELEASE AFTER RC(s)
+    * @@@ GET RID OF RC THINGS FROM CHANGELOG AND REPLACE WITH ACTUAL RELEASE
+    * Review documentation for any changes that need to be made
+        * Search for old Stack version, unstable stack version, and the next
+          "obvious" version in sequence (if doing a non-obvious jump), and
+          `UNRELEASED` and replace with new version
+        * Look for any links to "latest" documentation, replace with version tag
+    * Update `.github/ISSUE_TEMPLATE.md` to point at the new version.
+
+
 
 ## Release process
 
@@ -120,14 +143,13 @@ tree containing the script will be used to build the stack code in the current
 directory. That allows you to iterate on the release process while building a
 consistent and clean stack version.
 
-* package.yaml: bump version to odd last component (e.g. from 1.6.0 to 1.6.1).
+* package.yaml: bump version to odd last component (e.g. from 1.6.0 to 1.6.1) or, in the case of a release candidate add a patchlevel (e.g. 1.6.0.1). `[RC]`
 
 * Create a
   [new draft Github release](https://github.com/commercialhaskell/stack/releases/new)
-  with tag and name `vX.Y.Z` (where X.Y.Z is the stack package's version), targeting the
-  RC branch
+  with tag and name `vX.Y.Z` (where X.Y.Z matches the version in `package.yaml` from the previous step), targeting the RC branch.  In the case of a release candidate, check the *This is a pre-release* checkbox.  `[RC]`
 
-* On each machine you'll be releasing from, set environment variable `GITHUB_AUTHORIZATION_TOKEN`.
+* On each machine you'll be releasing from, set environment variable `GITHUB_AUTHORIZATION_TOKEN`. `[RC]`
 
 * On a machine with Vagrant installed:
     * Run `etc/scripts/vagrant-releases.sh`
@@ -173,6 +195,7 @@ consistent and clean stack version.
     * package.yaml: bump the version number even third component (e.g. from 1.6.1 to 1.6.2)
     * ChangeLog: Add an "Unreleased changes" section:
 
+        ```
         ## Unreleased changes
 
         Release notes:
@@ -184,6 +207,7 @@ consistent and clean stack version.
         Other enhancements:
 
         Bug fixes:
+        ```
 
 * Delete the RC branch (locally and on origin)
 
@@ -234,35 +258,35 @@ set up.
      * Change **Choose how updates are installed** to **Notify to schedule restart**
      * Check **Defer upgrades**
 
- 6. Optional (for convenience): Configure a shared folder for your home directory on the host, and mount it on Z:
-
- 7. [@@@ TODO] Install Windows SDK (for signtool):
+ 7. @@@ SKIP: Install Windows SDK (for signtool):
     http://microsoft.com/en-us/download/confirmation.aspx?id=8279
 
  8. Install msysgit: https://msysgit.github.io/
 
  9. Install nsis-2.46.5-Unicode-setup.exe from http://www.scratchpaper.com/
 
-10: Install Stack using the Windows 64-bit installer
+10. Install Stack using the Windows 64-bit installer
+
+    a. Restart any command prompts to ensure they get new `%STACK_ROOT%` value.
 
 11. Visit https://hackage.haskell.org/ in Edge to ensure system has correct CA
     certificates
 
-12. [@@@ TODO] Obtain a code signing certificate.
+12. @@@ SKIP Obtain a code signing certificate.
     Double click it in explorer and import it.  If you do not have a signing certificate,
     there are various CAs that will issue them.  As of this writing, the least expensive option is an [Open Source Code Signing certificate from Certum](https://www.certum.eu/certum/cert,offer_en_open_source_cs.xml)
 
 13. Run in command prompt:
 
         md C:\p
-        md C:\p\tmp
-        cd \p
+        md C:\tmp
+        cd /d C:\p
 
 14. Create `C:\p\env.bat`:
 
-        SET TEMP=C:\p\tmp
-        SET TMP=C:\p\tmp
-        PATH c:\Program Files\Git\usr\bin;C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin;%PATH%
+        SET TEMP=C:\tmp
+        SET TMP=C:\tmp
+        SET PATH=C:\Users\IEUser\AppData\Roaming\local\bin;"c:\Program Files\Git\usr\bin";"C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin";%PATH%
 
 15. Run `C:\p\env.bat` (do this every time you open a new command prompt)
 
@@ -271,6 +295,7 @@ set up.
 17. Run in command prompt (adjust the `user.email` and `user.name` settings):
 
         stack --install-ghc install cabal-install
+        stack install cabal-install
         git config --global user.email manny@fpcomplete.com
         git config --global user.name "Emanuel Borsboom"
         git config --global push.default simple
@@ -279,6 +304,8 @@ set up.
         git clone https://github.com/borsboom/stack-installer.git
 
 ## Setting up an ARM VM for releases
+
+@@@ NOTE SCALEWAY INSTEAD
 
 These instructions assume the host system is running macOS. Some steps will vary
 with a different host OS.
