@@ -148,7 +148,7 @@ do_ubuntu_install() {
   elif is_64_bit ; then
     install_dependencies
     print_bindist_notice
-    install_64bit_static_binary
+    install_64bit_standard_binary
   else
     install_dependencies
     print_bindist_notice
@@ -174,7 +174,7 @@ do_debian_install() {
   elif is_64_bit ; then
     install_dependencies
     print_bindist_notice
-    install_64bit_static_binary
+    install_64bit_standard_binary
   else
     install_dependencies
     print_bindist_notice
@@ -194,7 +194,7 @@ do_fedora_install() {
   if is_64_bit ; then
     install_dependencies "$1"
     print_bindist_notice
-    install_64bit_static_binary
+    install_64bit_standard_binary
   else
     install_dependencies "$1"
     print_bindist_notice
@@ -213,8 +213,17 @@ do_centos_install() {
 
   if is_64_bit ; then
     install_dependencies
-    print_bindist_notice
-    install_64bit_static_binary
+    case "$1" in
+      "6")
+        print_bindist_notice "libgmp4"
+        #@@@ TEST
+        install_64bit_gmp4_linked_binary
+        ;;
+      *)
+        print_bindist_notice
+        #@@@ TEST
+        install_64bit_standard_binary
+        ;;
   else
     install_dependencies
     case "$1" in
@@ -263,7 +272,7 @@ do_alpine_install() {
   }
   install_dependencies
   if is_64_bit ; then
-    install_64bit_static_binary
+    die "Sorry, there is currently no 64-bit Alpine Linux binary available."
   else
     die "Sorry, there is currently no 32-bit Alpine Linux binary available."
   fi
@@ -279,7 +288,7 @@ do_sloppy_install() {
   if is_arm ; then
       install_arm_binary
   elif is_64_bit ; then
-      install_64bit_static_binary
+      install_64bit_standard_binary
   else
       install_32bit_standard_binary
   fi
@@ -498,12 +507,12 @@ install_32bit_standard_binary() {
   install_from_bindist "linux-i386"
 }
 
-install_64bit_static_binary() {
-  install_from_bindist "linux-x86_64-static"
-}
-
 install_32bit_gmp4_linked_binary() {
   install_from_bindist "linux-i386-gmp4"
+}
+
+install_64bit_gmp4_linked_binary() {
+  install_from_bindist "linux-x86_64-gmp4"
 }
 
 install_64bit_osx_binary() {

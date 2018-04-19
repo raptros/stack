@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#@@@ REMOVE (no longer doing)
 set -xe
 "$(dirname "$0")/with-vagrant.sh" debian-7-amd64 "$* upload-ubuntu-14.04 upload-ubuntu-16.04"
 "$(dirname "$0")/with-vagrant.sh" centos-7-x86_64 "$* upload-centos-7"

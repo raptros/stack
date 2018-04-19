@@ -4,30 +4,21 @@
 
 ## Next release:
 
-* Remove `package.yaml` from hackage sdists (e.g. by removing from extra-source-files) since it causes confusion with hackage metadata revisions.
-* Don't upgrade stack.yaml to lts 10 until after v1.7 has been released (therwise will prevent `stack upgrade` from source working for people on older versions)
-* @@@ for prerelease/release candidate, make a `vX.Y.Z` (minor version) branch and enable RTFD for it so that doc links (which ignore patchlevel) work
-* Add SHA256 checksums for bindists
-* Also sign/checksum sdists?
-* Create release candidate process (maybe switch to GHC-style versioning)
-* Maybe drop 32-bit CentOS 6 bindists, since GHC 8.2.1 seems to have dropped them.
-* Replace non-static Linux bindists with static (but keep old links active so
-  links don't break and 'stack upgrade' in old versions still work)
-* @@@ be careful with Alpine VM image, might want to avoid re-provisioning it in case new GHC package is released and that breaks the release process. (see https://github.com/alpinelinux/aports/pull/2042)
-* @@@ note: windows exe signing certificate expires Thu Sep 21 21:52:29 2017
-    * https://stackoverflow.com/questions/12311203/how-to-pass-the-smart-screen-on-win8-when-install-a-signed-application/28359323#28359323
-    * https://security.stackexchange.com/questions/139347/smart-screen-filter-still-complains-despite-i-signed-the-executable-why
-    * https://github.com/mintty/wsltty/issues/32
-* @@@ openBSD binaries, if building with GHC 8.2.1 (now that openbsd GHC bindists exist)
-* @@@ might have alpine 32-bit GHC available too (see https://github.com/alpinelinux/aports/pull/2042#issuecomment-320137857) for static 32-bit builds.  also try bindists in https://github.com/redneb/ghc-alt-libc
-* @@@ maybe announce fully phasing out ubuntu/centos packages?
-* @@@ put back on stackage
+* @@@ get_stack.sh:
+    * @@@ TEST armv7 (ubuntu)
+    * @@@ TEST aarch64 (ubuntu, debian)
+    * @@@ TEST centos 6 64-bit gmp4
+    * @@@ TEST centos 7 64-bit standard
+    * @@@ TEST centos6 32-bit gmp4 SHOULD FAIL (no longer exists)
+    * @@@ TEST sloppy aarch64
+* @@@ check that aarch64 link in install docs works after 1.7.1 released
+* @@@ close https://github.com/commercialhaskell/stack/issues/3954 once v1.7.1 released
 * @@@ remove `-nopie` variants from stack-setup-2.yaml (stack-1.7 will no longer use them, so wait a few more major releases)
 * @@@ look into https://github.com/tfausak/github-release
-* @@@ upgrade to freebsd 12 for build?
-* @@@ for stack-1.7 built w/ ghc 8.2.2, do an aarch64 bindist
-* @@@ switch to debian 8 for building linux binaries, to match GHC
+* @@@ upgrade to freebsd 11.1 for build?
+* @@@ switch to debian 8 for building linux binaries, to match GHC?
 * @@@ NOTE: that stack-nightly removed, since only nightlies older than LTS-11 work
+- @@@ perhaps remove static from https://github.com/fpco/stackage-content/blob/master/stack/releases.yamlhttps://github.com/fpco/stackage-content/blob/master/stack/releases.yaml
 
 ## Version scheme
 
@@ -37,10 +28,10 @@
 * All branches _except_ `release` (which matches exactly the most recent release) must have an even third component (development)
 * Branches other than `stable` and `release` will always have a `0` third component (e.g. 1.7.0).
 
-## Pre-release steps
+## Pre-release checks
 
-* Check for any P0 and P1 issues
-* Check for un-merged pull requests
+* Check for any P0 and P1 issues that should be dealt with before release
+* Check for un-merged pull requests that should be merged before release
 * Ensure `release` and `stable` branches merged to `master`
 * Check compatibility with latest LTS Stackage snapshots
     * `stack-*.yaml` (where `*` is not `nightly`), __including the ones in
@@ -69,10 +60,20 @@
   stack:integration-tests`. The actual release script will perform a more
   thorough test for every platform/variant prior to uploading, so this is just a
   pre-check
+
+## Release preparation
+
 * In master branch:
-    * package.yaml: bump to next release candidate version (add a `.1` patchlevel, e.g. `X.Y.0.1`)
-    * ChangeLog: rename the "Unreleased changes" section to the same version as package.yaml
-* Cut a release candidate branch `rc/vX.Y` from master
+    * `package.yaml`: bump to next release candidate version (add a `.1` patchlevel, e.g. `X.Y.0.1`)
+    * `ChangeLog.md`
+        * Rename the "Unreleased changes" section to the same version as package.yaml, and mark it clearly as a release candidate (e.g. `vX.Y.0.1 (release candidate)`).  Remove any empty sections.
+        * [@@@ SKIP] Check for any important changes that missed getting an entry in
+          Changelog (`git log origin/stable...HEAD`)
+        * Check for any entries that snuck into the previous version's changes
+          due to merges (`git diff origin/stable HEAD ChangeLog.md`)
+
+* Cut a release candidate branch `vX.Y.0` from master
+
 * In master branch:
     * package.yaml: bump version to next major (second) component with `.0` third component (e.g. from 1.6.2 to 1.7.0)
     * Changelog: add new "Unreleased changes" section:
@@ -89,47 +90,38 @@
 
       Bug fixes:
       ```
+
 * In RC branch:
-    * Update the ChangeLog:
-        * [@@@ SKIP] Check for any important changes that missed getting an entry in
-          Changelog (`git log origin/stable...HEAD`)
-        * Check for any entries that snuck into the previous version's changes
-          due to merges (`git diff origin/stable HEAD ChangeLog.md`)
     * Review documentation for any changes that need to be made
         * Ensure all documentation pages listed in `mkdocs.yaml`
           (`git diff --stat origin/stable..HEAD doc/`)
         * Any new documentation pages should have the "may not be correct for
           the released version of Stack" warning at the top.
+        * Search for old Stack version, unstable stack version, and the next
+          "obvious" version in sequence (if doing a non-obvious jump), and
+          `UNRELEASED` and replace with next release version (`X.Y.1`).
+        * Look for any links to "latest" documentation, replace with version tag
+    * Update `.github/ISSUE_TEMPLATE.md` to point at the new release version (`X.Y.1).
     * Check for new major [FreeBSD release](https://www.freebsd.org/releases/).  If so, add a `Vagrantfile` for it in `etc/vagrant/freebsd-X.Y-amd64` and update `etc/scripts/vagrant-releases.hs`
-    * Check that no new entries need to be added to
+    * Check that for any platform entries that need to be added to (or removed from)
       [releases.yaml](https://github.com/fpco/stackage-content/blob/master/stack/releases.yaml),
-      [install_and_upgrade.md](https://github.com/commercialhaskell/stack/blob/master/doc/install_and_upgrade.md),
-      and
-      `README.md`
-    * Remove unsupported/obsolete distribution versions from the release process.
-        * [Ubuntu](https://wiki.ubuntu.com/Releases)
-            * 14.04 EOL 2019-APR
-            * 16.04 EOL 2021-APR
-        * [CentOS](https://wiki.centos.org/Download)
-            * 6 EOL 2020-NOV-30
-            * 7 EOL 2024-JUN-30
+      [install_and_upgrade.md](https://github.com/commercialhaskell/stack/blob/master/doc/install_and_upgrade.md), [get-stack.sh](https://github.com/commercialhaskell/stack/blob/master/etc/scripts/get-stack.sh), and [doc/README.md](https://github.com/commercialhaskell/stack/blob/master/doc/README.md).
 
 * Follow steps in *Release process* below tagged with `[RC]` to make a release candidate
 
-* @@@ FOR REAL RELEASE AFTER RC(s)
-    * @@@ GET RID OF RC THINGS FROM CHANGELOG AND REPLACE WITH ACTUAL RELEASE
-    * Review documentation for any changes that need to be made
-        * Search for old Stack version, unstable stack version, and the next
-          "obvious" version in sequence (if doing a non-obvious jump), and
-          `UNRELEASED` and replace with new version
-        * Look for any links to "latest" documentation, replace with version tag
-    * Update `.github/ISSUE_TEMPLATE.md` to point at the new version.
+* For subsequent release candidates:
+    * Re-do the pre-release checkes (above section)
+    * `package.yaml`: bump to next odd patchlevel version (e.g. `X.Y.0.3`)
+    * `ChangeLog.md`: Rename the "Unreleased changes" section to the new version, clearly marked as a release candidate (e.g. `vX.Y.0.3 (release candidate)`).  Remove any empty sections.
+    * Follow steps in *Release process* below tagged with `[RC]` to make a release candidate
 
+* For final release:
+    * `package.yaml`: bump version to odd last component and no patchlevel (e.g. from `X.Y.0.2` to `X.Y.1`).
+    * `ChangeLog.md`: consolidate all the RC changes into a single section for the release version
+    * Follow all steps in the *Release process* section below.
 
 
 ## Release process
-
-[@@@ FOR A PRE-RELEASE, BE SURE TO ACTIVATE THE TAG IN RTFD SO THAT DOC LINKS WORK -- @@@ ACTUALLY ADD branch for major version since now doc links leave off patchlevel]
 
 See
 [stack-release-script's README](https://github.com/commercialhaskell/stack/blob/master/etc/scripts/README.md#prerequisites)
@@ -143,29 +135,31 @@ tree containing the script will be used to build the stack code in the current
 directory. That allows you to iterate on the release process while building a
 consistent and clean stack version.
 
-* package.yaml: bump version to odd last component (e.g. from 1.6.0 to 1.6.1) or, in the case of a release candidate add a patchlevel (e.g. 1.6.0.1). `[RC]`
-
 * Create a
   [new draft Github release](https://github.com/commercialhaskell/stack/releases/new)
-  with tag and name `vX.Y.Z` (where X.Y.Z matches the version in `package.yaml` from the previous step), targeting the RC branch.  In the case of a release candidate, check the *This is a pre-release* checkbox.  `[RC]`
+  with tag and name `vX.Y.Z` (where X.Y.Z matches the version in `package.yaml` from the previous step), targeting the RC branch.  In the case of a release candidate, add `(RELEASE CANDIDATE)` to the name field.  check the *This is a pre-release* checkbox.  `[RC]`
 
 * On each machine you'll be releasing from, set environment variable `GITHUB_AUTHORIZATION_TOKEN`. `[RC]`
 
-* On a machine with Vagrant installed:
+* On a machine with Vagrant installed: `[RC]`
     * Run `etc/scripts/vagrant-releases.sh`
 
-* On macOS:
+* On macOS: `[RC]`
     * Run `etc/scripts/osx-release.sh`
 
-* On Windows:
+* On Windows: `[RC]`
     * Use a short path for your working tree (e.g. `C:\p\stack-release`
     * Ensure that STACK_ROOT, TEMP, and TMP are set to short paths
-    * Run `etc\scripts\windows-releases.bat`
+    * Run `etc\scripts\windows-releases.bat` (for release candidates, only 64-bit is necessary so feel free to comment out 32-bit)
     * Release Windows installers. See
-      [stack-installer README](https://github.com/borsboom/stack-installer#readme)
+      [stack-installer README](https://github.com/borsboom/stack-installer#readme).
+      For release candidates, the windows installers can be skipped.
 
-* On Linux ARMv7:
+* On Linux ARMv7: `[RC]`
     * Run `etc/scripts/linux-armv7-release.sh`
+
+* On Linux ARM64 (aarch64): `[RC]`
+    * Run `etc/scripts/linux-aarch64-release.sh`
 
 * Build sdist using `stack sdist .`, and upload it to the
   Github release with a name like `stack-X.Y.Z-sdist-0.tar.gz`.
@@ -181,7 +175,7 @@ consistent and clean stack version.
 
 * Publish Github release. Include the changelog and in the description and use e.g. `git shortlog -s origin/release..HEAD|sed $'s/^[0-9 \t]*/* /'|sort -f` to get the list of contributors.
 
-* Push signed Git tag, matching Github release tag name, e.g.: `git tag -d vX.Y.Z; git tag -s -m vX.Y.Z vX.Y.Z && git push -f origin vX.Y.Z`
+* Push signed Git tag, matching Github release tag name, e.g.: `git tag -d vX.Y.Z; git tag -s -m vX.Y.Z vX.Y.Z && git push -f origin vX.Y.Z`.  `[RC]`
 
 * Upload package to Hackage: `stack upload .`
 
@@ -191,8 +185,8 @@ consistent and clean stack version.
 
 * Update the `stable` branch similarly
 
-* In the `stable` branch:
-    * package.yaml: bump the version number even third component (e.g. from 1.6.1 to 1.6.2)
+* In the `stable` or, in the case of a release candidate, `vX.Y.0` branch: `[RC]`
+    * package.yaml: bump the version number even third component (e.g. from 1.6.1 to 1.6.2) or, in the case of a release candidate even _fourth_ component.
     * ChangeLog: Add an "Unreleased changes" section:
 
         ```
@@ -209,13 +203,17 @@ consistent and clean stack version.
         Bug fixes:
         ```
 
+* Activate version for new release tag (or, in the case of release candidates, the `vX.Y.0` branch), on
+  [readthedocs.org](https://readthedocs.org/dashboard/stack/versions/), and
+  ensure that stable documentation has updated.  `[RC]`
+
+* Deactivate version for release candidate on [readthedocs.org](https://readthedocs.org/dashboard/stack/versions/).
+
+* Update [get.haskellstack.org /stable rewrite rules](https://gitlab.fpcomplete.com/fpco/devops/blob/develop/kubernetes/fpco-prod-v2/90_nginx-prod-v2_deployment.yaml) (be sure to change both places) to new released version, and update production cluster.
+
 * Delete the RC branch (locally and on origin)
 
-* Activate version for new release tag on
-  [readthedocs.org](https://readthedocs.org/dashboard/stack/versions/), and
-  ensure that stable documentation has updated
-
-* Merge any changes made in the RC/release/stable branches to master (be careful about version and changelog)
+* Merge any changes made in the RC/release/stable branches to master (be careful about version and changelog).  `[RC]`
 
 * [@@@ SKIP; no longer doing distro releases] On a machine with Vagrant installed:
     * Make sure you are on the same commit as when `vagrant-release.sh` was run.
@@ -228,7 +226,7 @@ consistent and clean stack version.
 * Update fpco/stack-build Docker images with new version
 
 * Announce to haskell-cafe@haskell.org, haskell-stack@googlegroups.com,
-  commercialhaskell@googlegroups.com mailing lists
+  commercialhaskell@googlegroups.com mailing lists. `[RC]`
 
 * Keep an eye on the
   [Hackage matrix builder](http://matrix.hackage.haskell.org/package/stack)
@@ -303,9 +301,25 @@ set up.
         git clone https://github.com/commercialhaskell/stack.git stack-release
         git clone https://github.com/borsboom/stack-installer.git
 
+18. @@@ `stack exec -- gpg --import` (with the dev@fpcomplete.com secret key -- must be done using `stack exec` because that uses the right keyring for the embedded msys GPG)
+
 ## Setting up an ARM VM for releases
 
-@@@ NOTE SCALEWAY INSTEAD
+@@@ NOTE SCALEWAY INSTEAD, w/ ubuntu xenial.  use apt-get install -y llvm-3.X (3.9 for GHC 8.2, 3.7 for GHC 8.0)  then symlink opt-3.X to `opt` (e.g. `sudo ln -s opt-3.9 /usr/bin/opt`), and also switch to gold linker:
+
+    update-alternatives --install "/usr/bin/ld" "ld" "/usr/bin/ld.gold" 20
+    update-alternatives --install "/usr/bin/ld" "ld" "/usr/bin/ld.bfd" 10
+    update-alternatives --config ld
+
+    dd if=/dev/zero of=/swapfile1 bs=1024 count=4194304
+    mkswap /swapfile1
+    swapon /swapfile1
+    echo '/swapfile1 none swap sw 0 0' >>/etc/fstab
+
+    apt-get update && apt-get install -y unzip #@@@ AND OTHERS
+
+    #@@@ gpg --import for the dev@fpcomplete.com key
+
 
 These instructions assume the host system is running macOS. Some steps will vary
 with a different host OS.

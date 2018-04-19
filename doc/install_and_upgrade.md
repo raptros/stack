@@ -106,7 +106,7 @@ There is also a [Ubuntu
 package](http://packages.ubuntu.com/search?keywords=haskell-stack&searchon=names&suite=all&section=all)
 for Ubuntu 16.10 and up, but the distribution's Stack version lags behind, so we
 recommend running `stack upgrade --binary` after installing it. For older stack
-versions which do not support `--binary`, just `stack upgrade` is fine too. The
+versions which do not support `--binary`, just `stack upgrade` may work too. The
 version in Ubuntu 16.04 is too old to upgrade successfully, and so in that case
 stack should be installed from a [release
 tarball](https://github.com/commercialhaskell/stack/releases).
@@ -119,7 +119,7 @@ There is also a [Debian
 package](https://packages.debian.org/search?keywords=haskell-stack&searchon=names&suite=all&section=all)
 for Stretch and up, but the distribution's Stack version lags behind, so running
 `stack upgrade --binary` is recommended after installing it. For older stack
-versions which do not support `--binary`, just `stack upgrade` is fine too.
+versions which do not support `--binary`, just `stack upgrade` may work too.
 
 ## <a name="centos"></a>CentOS / Red Hat / Amazon Linux
 
@@ -233,13 +233,22 @@ or:
 
 * Download the latest release:
 
-    * [Linux 64-bit, static](https://www.stackage.org/stack/linux-x86_64-static)
+      [#@@@ TEST THESE]
+    * [Linux 64-bit, standard](https://www.stackage.org/stack/linux-x86_64)
+
+    * [Linux 64-bit, libgmp4](https://www.stackage.org/stack/linux-x86_64-gmp4)
+      (if you are on an older 64-bit distribution that only includes libgmp4
+      (libgmp.so.3), such as CentOS/RHEL/Amazon Linux 6.)
 
     * [Linux 32-bit, standard](https://www.stackage.org/stack/linux-i386)
 
     * [Linux 32-bit, libgmp4](https://www.stackage.org/stack/linux-i386-gmp4)
       (if you are on an older 32-bit distribution that only includes libgmp4
       (libgmp.so.3), such as CentOS/RHEL/Amazon Linux 6.)
+
+    * [Linux ARMv7](https://www.stackage.org/stack/linux-arm) [@@@ TEST]
+
+    * [Linux AArch64](https://www.stackage.org/stack/linux-aarch64) [@@@ TEST]
 
 * Extract the archive and place `stack` somewhere on your `$PATH` (see [Path section below](#path))
 

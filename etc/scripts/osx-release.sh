@@ -2,4 +2,4 @@
 #TODO: move this logic into release.hs.
 #@@@: rename to macos-release.hs
 set -xe
-stack "$(dirname "$0")/release.hs" --no-test-haddocks --arch=x86_64 "$@" release
+stack "$(dirname "$0")/release.hs" --no-test-haddocks --arch=x86_64 "$@" upload #@@@ release
